@@ -1,0 +1,11 @@
+front:
+- changed-files:
+  - any-glob-to-any-file: front/*
+
+back:
+- changed-files:
+  - any-glob-to-any-file: back/*
+
+docs:
+- changed-files:
+  - any-glob-to-any-file: docs/*
