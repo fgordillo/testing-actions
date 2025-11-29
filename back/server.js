@@ -11,7 +11,11 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
+<<<<<<< HEAD
   console.log(`Server is running fast on port ${PORT}`);
+=======
+  console.log(`Server is jogging on port ${PORT}`);
+>>>>>>> origin/main
 });
 
 module.exports = app;

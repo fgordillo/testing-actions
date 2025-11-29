@@ -62,7 +62,18 @@ jobs:
             echo "conflict=false" >> $GITHUB_OUTPUT
           else
             echo "conflict=true" >> $GITHUB_OUTPUT
-            git merge --abort
+            # Don't abort the merge - instead, commit the conflicted state
+            # This allows us to push the branch and create a PR showing the conflicts
+            # The PR will be labeled and titled to indicate conflicts need resolution
+            
+            # Check if there are any changes to commit (there should be conflict markers)
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              git add -A
+              git commit -m "Merge ${SOURCE} into ${TARGET} (with conflicts)"
+            else
+              echo "::warning::Merge failed but no unmerged files found. This is unexpected."
+              exit 1
+            fi
           fi
 
           # Push the branch
@@ -95,12 +106,23 @@ jobs:
             echo "pull-request-number=${PR_NUMBER}" >> $GITHUB_OUTPUT
             echo "pr-created=true" >> $GITHUB_OUTPUT
           else
+            # Prepare PR body with conflict warning if needed
+            if [ "${{ steps.merge.outputs.conflict }}" == "true" ]; then
+              PR_TITLE="Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }} [CONFLICTS]"
+              PR_BODY="⚠️ **Merge conflicts detected!** This is an automated propagation PR from \`${{ github.ref_name }}\` to \`${{ steps.map.outputs.target }}\`. **Action required:** Please resolve the merge conflicts manually before merging this PR."
+              LABELS="auto-propagation,merge-conflict"
+            else
+              PR_TITLE="Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }}"
+              PR_BODY="Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}"
+              LABELS="auto-propagation"
+            fi
+
             PR_OUTPUT=$(gh pr create \
               --base "${{ steps.map.outputs.target }}" \
               --head "${{ steps.merge.outputs.branch }}" \
-              --title "Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }}" \
-              --body "Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}" \
-              --label "auto-propagation" \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
+              --label "$LABELS" \
               --repo "${GITHUB_REPOSITORY}" || true)
 
             # Extract PR number from the output URL: https://github.com/<owner>/<repo>/pull/<number>
