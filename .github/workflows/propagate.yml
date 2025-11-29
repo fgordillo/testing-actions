@@ -20,9 +20,9 @@ jobs:
         id: map
         run: |
           case "${GITHUB_REF_NAME}" in
-            main) echo "target=release" >> $GITHUB_OUTPUT ;;
-            release) echo "target=dev" >> $GITHUB_OUTPUT ;;
-            *) echo "target=" >> $GITHUB_OUTPUT ;;
+            main) echo "target=release" >> "$GITHUB_OUTPUT" ;;
+            release) echo "target=dev" >> "$GITHUB_OUTPUT" ;;
+            *) echo "target=" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Skip if no target branch
@@ -56,15 +56,15 @@ jobs:
 
           # Attempt merge
           if git merge "origin/${SOURCE}" --no-edit; then
-            echo "conflict=false" >> $GITHUB_OUTPUT
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
             git push origin "${BRANCH}"
           else
-            echo "conflict=true" >> $GITHUB_OUTPUT
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
             git merge --abort
             git push origin "${BRANCH}"
           fi
 
-          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
       - name: Create PR
         id: pr
@@ -75,12 +75,13 @@ jobs:
         run: |
           echo "pr-created=false" >> "$GITHUB_OUTPUT"
 
+          # Try getting existing PR
           EXISTING_PR=$(gh pr list \
             --base "${{ steps.map.outputs.target }}" \
             --head "${{ steps.merge.outputs.branch }}" \
             --json number \
             --jq '.[0].number // empty' \
-            --repo "${GITHUB_REPOSITORY}" || echo "")
+            --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true)
 
           if [ -n "$EXISTING_PR" ]; then
             echo "pull-request-number=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
@@ -93,18 +94,17 @@ jobs:
               --body "Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}" \
               --label "auto-propagation" \
               --json number,url \
-              --repo "${GITHUB_REPOSITORY}" 2>/dev/null)
+              --repo "${GITHUB_REPOSITORY}" 2>/dev/null || true)
 
             PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number // empty')
             PR_URL=$(echo "$PR_JSON" | jq -r '.url // empty')
 
             if [ -n "$PR_NUMBER" ]; then
-              echo "pull-request-number=${PR_NUMBER}" >> $GITHUB_OUTPUT
-              echo "pull-request-url=${PR_URL}" >> $GITHUB_OUTPUT
-              echo "pr-created=true" >> $GITHUB_OUTPUT
+              echo "pull-request-number=${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+              echo "pull-request-url=${PR_URL}" >> "$GITHUB_OUTPUT"
+              echo "pr-created=true" >> "$GITHUB_OUTPUT"
             fi
           fi
-
       - name: Handle merge conflicts
         if: steps.merge.outputs.conflict == 'true'
         run: |
