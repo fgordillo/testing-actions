@@ -115,23 +115,10 @@ jobs:
             echo "::warning::PR #${{ steps.pr.outputs.pull-request-number }} created with conflicts. Review manually."
           fi
 
-      - name: Optional Copilot Agent for conflict resolution
-        if:
-          steps.merge.outputs.conflict == 'true' &&
-          steps.pr.outputs.pr-created == 'true' &&
-          env.ENABLE_COPILOT_AGENT == 'true'
-        continue-on-error: true
-        uses: github/copilot-agent@v1
-        with:
-          agent: merge-propagation-agent
-          pull-request: ${{ steps.pr.outputs.pull-request-number }}
-          instructions: |
-            There is a merge conflict between ${{ github.ref_name }}
-            and ${{ steps.map.outputs.target }}.
-            - Analyze the PR diff.
-            - Use git blame to identify authors.
-            - Explain how the conflict should be resolved.
-            - Mention the developers involved.
-            - Request confirmation before applying the resolution.
-            - Do not make changes without reviewing the context.
-            - If trivial, propose a safe resolution directly.
+      - name: Comment on PR about conflict
+        if: steps.merge.outputs.conflict == 'true' && steps.pr.outputs.pr-created == 'true'
+        run: |
+          gh pr comment "${{ steps.pr.outputs.pull-request-number }}" \
+            --body "⚠️ Merge conflict detected in this PR. Please resolve manually."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
