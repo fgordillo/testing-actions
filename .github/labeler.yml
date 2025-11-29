@@ -1,7 +1,3 @@
 docs: "docs/**"
 front: "front/**"
 back: "back/**"
-
-hotfix:
-  base-branch: "main"
-
