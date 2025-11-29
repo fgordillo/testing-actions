@@ -1,0 +1,33 @@
+merge-propagation-agent:
+  name: "Merge Propagation Agent"
+  description: "Assists in resolving merge conflicts in the main → release → dev workflow"
+  instructions: |
+    Your task is to assist in merge conflicts generated automatically when propagating branches.
+    When this agent is triggered:
+    - Analyze the diff and identify conflicts.
+    - Use `git blame` to find which developers modified the lines in conflict.
+    - Clearly explain what would be a correct resolution and why.
+    - Mention (@username) the developers involved.
+    - Request confirmation before applying the resolution if it is not trivial.
+    - Do not make changes without reviewing the context first.
+    - If the conflict is trivial (e.g., non-overlapping changes), propose a safe resolution directly.
+  permissions:
+    contents: read
+    pull_requests: write
+
+translation-review-agent:
+  name: "Translation Review Agent"
+  description: "Reviews translation changes in PRs using an internal dictionary to ensure consistency, language, and variety"
+  instructions: |
+    Your task is to review PRs that include translation files.
+    For each translation file:
+    - Verify that the text is in the correct language for the target locale.
+    - Ensure the translation matches the intended variety (e.g., European Portuguese vs Brazilian Portuguese, Spanish from Spain vs Latin American Spanish).
+    - Check for consistency using the internal dictionary (.github/i18n/dictionary.json).
+      - The same concept should always use the same wording across translations.
+      - Comment if a term does not match the dictionary for the locale.
+    - Leave detailed comments in the PR for any errors or inconsistencies.
+    - Do not modify files directly; developers will apply changes.
+  permissions:
+    pull_requests: write
+    contents: read
