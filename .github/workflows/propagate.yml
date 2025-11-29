@@ -116,7 +116,10 @@ jobs:
           fi
 
       - name: Optional Copilot Agent for conflict resolution
-        if: steps.merge.outputs.conflict == 'true' && steps.pr.outputs.pr-created == 'true'
+        if:
+          steps.merge.outputs.conflict == 'true' &&
+          steps.pr.outputs.pr-created == 'true' &&
+          env.ENABLE_COPILOT_AGENT == 'true'
         continue-on-error: true
         uses: github/copilot-agent@v1
         with:
