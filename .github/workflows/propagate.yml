@@ -9,7 +9,7 @@ on:
 jobs:
   propagate:
     runs-on: ubuntu-latest
-    # Avoids using this workflow on forks
+    # Evita ejecutar el workflow en PRs desde forks para proteger secretos
     if: github.repository_owner == github.actor
 
     steps:
@@ -17,6 +17,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Install GitHub CLI
+        run: sudo apt update && sudo apt install gh -y
+
+      - name: Authenticate GitHub CLI
+        run: echo "${GITHUB_TOKEN}" | gh auth login --with-token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine target branch
         id: map
@@ -75,7 +83,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "pr-created=false" >> $GITHUB_OUTPUT
+          echo "pr-created=false" >> "$GITHUB_OUTPUT"
 
           # Check if PR already exists
           EXISTING_PR=$(gh pr list \
@@ -85,8 +93,8 @@ jobs:
             --jq '.[0].number // empty' || echo "")
 
           if [ -n "$EXISTING_PR" ]; then
-            echo "pull-request-number=${EXISTING_PR}" >> $GITHUB_OUTPUT
-            echo "pr-created=true" >> $GITHUB_OUTPUT
+            echo "pull-request-number=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
+            echo "pr-created=true" >> "$GITHUB_OUTPUT"
           else
             PR_JSON=$(gh pr create \
               --base "${{ steps.map.outputs.target }}" \
