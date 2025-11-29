@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Hello from the backend!' });
+  res.json({ message: 'Hello from the backend that causes a conflict!' });
 });
 
 app.listen(PORT, () => {
