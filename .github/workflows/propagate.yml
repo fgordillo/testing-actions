@@ -20,9 +20,9 @@ jobs:
         id: map
         run: |
           case "${GITHUB_REF_NAME}" in
-            main) echo "target=release" >> $GITHUB_OUTPUT ;;
-            release) echo "target=dev" >> $GITHUB_OUTPUT ;;
-            *) echo "target=" >> $GITHUB_OUTPUT ;;
+            main) echo "target=release" >> "$GITHUB_OUTPUT" ;;
+            release) echo "target=dev" >> "$GITHUB_OUTPUT" ;;
+            *) echo "target=" >> "$GITHUB_OUTPUT" ;;
           esac
 
       - name: Skip if no target branch
@@ -56,15 +56,15 @@ jobs:
 
           # Attempt merge
           if git merge "origin/${SOURCE}" --no-edit; then
-            echo "conflict=false" >> $GITHUB_OUTPUT
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
             git push origin "${BRANCH}"
           else
-            echo "conflict=true" >> $GITHUB_OUTPUT
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
             git merge --abort
             git push origin "${BRANCH}"
           fi
 
-          echo "branch=${BRANCH}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
 
       - name: Create PR
         id: pr
