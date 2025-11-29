@@ -1,6 +1,6 @@
 docs:
-  - "docs/**"
+  - 'docs/**'
 front:
-  - "front/**"
+  - 'front/**'
 back:
-  - "back/**"
+  - 'back/**'
