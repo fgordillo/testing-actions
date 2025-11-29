@@ -1,14 +1,15 @@
 docs:
-- changed-files:
-  - any-glob-to-any-file: 'docs/*'
+  changed-files:
+    - any-glob-to-any-file: "docs/**"
 
 front:
-- changed-files:
-  - any-glob-to-any-file: 'front/*'
+  changed-files:
+    - any-glob-to-any-file: "front/**"
 
 back:
-- changed-files:
-  - any-glob-to-any-file: 'back/*'
+  changed-files:
+    - any-glob-to-any-file: "back/**"
 
 hotfix:
- - base-branch: 'main'
+  base-branch: "main"
+
