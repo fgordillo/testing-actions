@@ -9,22 +9,12 @@ on:
 jobs:
   propagate:
     runs-on: ubuntu-latest
-    # Evita ejecutar el workflow en PRs desde forks para proteger secretos
-    if: github.repository_owner == github.actor
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Install GitHub CLI
-        run: sudo apt update && sudo apt install gh -y
-
-      - name: Authenticate GitHub CLI
-        run: echo "${GITHUB_TOKEN}" | gh auth login --with-token
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine target branch
         id: map
@@ -85,12 +75,12 @@ jobs:
         run: |
           echo "pr-created=false" >> "$GITHUB_OUTPUT"
 
-          # Check if PR already exists
           EXISTING_PR=$(gh pr list \
             --base "${{ steps.map.outputs.target }}" \
             --head "${{ steps.merge.outputs.branch }}" \
             --json number \
-            --jq '.[0].number // empty' || echo "")
+            --jq '.[0].number // empty' \
+            --repo "${GITHUB_REPOSITORY}" || echo "")
 
           if [ -n "$EXISTING_PR" ]; then
             echo "pull-request-number=${EXISTING_PR}" >> "$GITHUB_OUTPUT"
@@ -102,7 +92,8 @@ jobs:
               --title "Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }}" \
               --body "Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}" \
               --label "auto-propagation" \
-              --json number,url 2>/dev/null)
+              --json number,url \
+              --repo "${GITHUB_REPOSITORY}" 2>/dev/null)
 
             PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number // empty')
             PR_URL=$(echo "$PR_JSON" | jq -r '.url // empty')
@@ -114,7 +105,7 @@ jobs:
             fi
           fi
 
-      - name: Warn on conflicts
+      - name: Handle merge conflicts
         if: steps.merge.outputs.conflict == 'true'
         run: |
           echo "::warning::Merge conflict detected for propagation branch '${{ steps.merge.outputs.branch }}'"
@@ -123,3 +114,21 @@ jobs:
           else
             echo "::warning::PR #${{ steps.pr.outputs.pull-request-number }} created with conflicts. Review manually."
           fi
+
+      - name: Optional Copilot Agent for conflict resolution
+        if: steps.merge.outputs.conflict == 'true' && steps.pr.outputs.pr-created == 'true'
+        continue-on-error: true
+        uses: github/copilot-agent@v1
+        with:
+          agent: merge-propagation-agent
+          pull-request: ${{ steps.pr.outputs.pull-request-number }}
+          instructions: |
+            There is a merge conflict between ${{ github.ref_name }}
+            and ${{ steps.map.outputs.target }}.
+            - Analyze the PR diff.
+            - Use git blame to identify authors.
+            - Explain how the conflict should be resolved.
+            - Mention the developers involved.
+            - Request confirmation before applying the resolution.
+            - Do not make changes without reviewing the context.
+            - If trivial, propose a safe resolution directly.
