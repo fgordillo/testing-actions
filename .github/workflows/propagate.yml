@@ -62,7 +62,9 @@ jobs:
             echo "conflict=false" >> $GITHUB_OUTPUT
           else
             echo "conflict=true" >> $GITHUB_OUTPUT
-            git merge --abort
+            # Don't abort - commit the conflicted state instead
+            git add -A
+            git commit -m "Merge ${SOURCE} into ${TARGET} (with conflicts)" || true
           fi
 
           # Push the branch
@@ -95,11 +97,20 @@ jobs:
             echo "pull-request-number=${PR_NUMBER}" >> $GITHUB_OUTPUT
             echo "pr-created=true" >> $GITHUB_OUTPUT
           else
+            # Prepare PR body with conflict warning if needed
+            if [ "${{ steps.merge.outputs.conflict }}" == "true" ]; then
+              PR_TITLE="Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }} ⚠️ CONFLICTS"
+              PR_BODY="⚠️ **Merge conflicts detected!** This is an automated propagation PR from \`${{ github.ref_name }}\` to \`${{ steps.map.outputs.target }}\`. **Action required:** Please resolve the merge conflicts manually before merging this PR."
+            else
+              PR_TITLE="Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }}"
+              PR_BODY="Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}"
+            fi
+
             PR_OUTPUT=$(gh pr create \
               --base "${{ steps.map.outputs.target }}" \
               --head "${{ steps.merge.outputs.branch }}" \
-              --title "Propagate: ${{ github.ref_name }} → ${{ steps.map.outputs.target }}" \
-              --body "Auto PR: ${{ github.ref_name }} to ${{ steps.map.outputs.target }}" \
+              --title "$PR_TITLE" \
+              --body "$PR_BODY" \
               --label "auto-propagation" \
               --repo "${GITHUB_REPOSITORY}" || true)
 
