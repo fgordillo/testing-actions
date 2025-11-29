@@ -104,8 +104,7 @@ jobs:
               echo "pull-request-url=${PR_URL}" >> "$GITHUB_OUTPUT"
               echo "pr-created=true" >> "$GITHUB_OUTPUT"
             fi
-
-
+          fi
       - name: Handle merge conflicts
         if: steps.merge.outputs.conflict == 'true'
         run: |
