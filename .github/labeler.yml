@@ -1,6 +1,3 @@
-docs:
-  - 'docs/**'
-front:
-  - 'front/**'
-back:
-  - 'back/**'
+docs: "docs/**"
+front: "front/**"
+back: "back/**"
