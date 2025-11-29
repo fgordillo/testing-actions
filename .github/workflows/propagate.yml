@@ -62,7 +62,9 @@ jobs:
             echo "conflict=false" >> $GITHUB_OUTPUT
           else
             echo "conflict=true" >> $GITHUB_OUTPUT
-            # Don't abort - commit the conflicted state instead
+            # Don't abort the merge - instead, commit the conflicted state
+            # This allows us to push the branch and create a PR showing the conflicts
+            # The PR will be labeled and titled to indicate conflicts need resolution
             git add -A
             git commit -m "Merge ${SOURCE} into ${TARGET} (with conflicts)" || true
           fi
