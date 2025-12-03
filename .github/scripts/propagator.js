@@ -65,13 +65,15 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         } else {
             // --- B. Create new PR ---
             // Define arguments for 'gh pr create'
+            const body = isConflict ?
+                `Auto PR: **${source}** to **${target}**.\n\n⚠️ **MERGE CONFLICTS DETECTED** ⚠️` :
+                `Auto PR: **${source}** to **${target}**.\n\n✅ **MERGE SUCCESSFUL** ✅`
             const createArgs = [
                 "pr", "create",
                 "--base", target,
                 "--head", newBranch,
                 "--title", `Propagate: ${source} → ${target}`,
-                "--body", `Auto PR: **${source}** to **${target}**.\n\n${isConflict ? '⚠️ **MERGE CONFLICTS DETECTED** ⚠️' : '✅ **MERGE SUCCESSFUL** ✅'}`,
-                // REMOVED: "--label", "propagator" (Added separately below)
+                "--body", body,
             ]
 
             let createOutput = ""
