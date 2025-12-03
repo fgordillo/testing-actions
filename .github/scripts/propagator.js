@@ -38,7 +38,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             "--json", "number"
         ]
 
-        await exec(listCmd.join(" "), [], {
+        await exec.exec(listCmd.join(" "), [], {
             silent: true,
             listeners: { stdout: (data) => { existingPrOutput += data.toString() } }
         })
@@ -60,7 +60,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             ]
 
             let createOutput = ""
-            await exec(createCmd.join(" "), [], {
+            await exec.exec(createCmd.join(" "), [], {
                 listeners: { stdout: (data) => { createOutput += data.toString() } }
             })
 
