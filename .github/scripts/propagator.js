@@ -69,7 +69,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 "--head", newBranch,
                 "--title", `Propagate: ${source} → ${target}`,
                 "--body", `Auto PR: **${source}** to **${target}**.\n\n${isConflict ? '⚠️ **MERGE CONFLICTS DETECTED** ⚠️' : '✅ **MERGE SUCCESSFUL** ✅'}`,
-                "--label", "propagator" 
+                "--label", "propagator"
             ]
 
             let createOutput = ""
@@ -95,8 +95,8 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 }
 
             } catch (error) {
-                // This catch handles 'gh pr create' failing (e.g., due to an unknown label, or if
-                // propagator.sh failed to detect a 'no-op' merge, although the shell script now handles that).
+                // This catch handles 'gh pr create' failing (e.g., due to an unknown label, or if propagator.sh failed to
+                // detect a 'no-op' merge, although the shell script now handles that).
                 core.error(`Failed to create PR. CLI Error Output: ${createError.trim()}`)
                 core.setFailed(`gh pr create failed: ${error.message}`)
                 return

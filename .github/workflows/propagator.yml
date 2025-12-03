@@ -54,7 +54,7 @@ jobs:
             github,
             context,
             core,
-            exec, // Pass the execution tool to the script (required for gh CLI calls)
+            exec,
             target: '${{ steps.propagation_script.outputs.target }}',
             source: '${{ github.ref_name }}',
             newBranch: '${{ steps.propagation_script.outputs.branch }}',
