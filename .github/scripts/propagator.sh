@@ -65,7 +65,7 @@ else
 
     # Revert to target state, then attempt merge again to get the conflict markers for the diff
     git reset --hard "origin/${TARGET}"
-    git merge "origin/${SOURCE}" --no-commit # Perform merge without committing
+    git merge "origin/${SOURCE}" --no-commit || true # Perform merge without committing
 
     # Commit the conflicted state
     git commit -m "Auto-propagation merge (CONFLICT) ${SOURCE} into ${TARGET}"
