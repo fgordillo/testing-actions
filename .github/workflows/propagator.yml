@@ -1,0 +1,66 @@
+name: Propagate branches
+
+on:
+  push:
+    branches:
+    - main
+    - release*
+    - fundae
+
+jobs:
+  propagate:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required for 'gh pr create/list' and posting AI comments on the PR timeline
+      contents: write
+      issues: write # Required for posting AI comments
+
+    steps:
+    - name: ⬇️ Checkout repository
+      uses: actions/checkout@v4
+      with:
+        # Fetch all history to ensure merge operations are accurate
+        fetch-depth: 0
+
+    - name: ⚙️ Install GitHub CLI (gh) and NodeJS
+      uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        # GitHub CLI is pre-installed on Ubuntu runners, but we use setup-node for consistency
+
+    - name: 📦 Install OpenAI Dependency
+      # Install the required library for the conflict review script
+      run: npm install openai
+
+    - name: 🌳 Propagate and Merge Branch
+      id: propagation_script
+      env:
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        # Set execute permission for the shell script
+        chmod +x .github/scripts/propagator.sh
+        # Execute the propagation script
+        ./.github/scripts/propagator.sh
+
+    - name: 📝 Create PR and Trigger AI Review
+      id: pr_creation_script
+      # This step uses the Node.js script to call gh CLI and the OpenAI API
+      if: steps.propagation_script.outputs.target != ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const script = require('./.github/scripts/propagator.js');
+          await script({
+            github,
+            context,
+            core,
+            exec,
+            target: '${{ steps.propagation_script.outputs.target }}',
+            source: '${{ github.ref_name }}',
+            newBranch: '${{ steps.propagation_script.outputs.branch }}',
+            isConflict: '${{ steps.propagation_script.outputs.conflict }}' === 'true',
+          });
+      env:
+        # Pass all necessary security variables to the Node.js environment
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
