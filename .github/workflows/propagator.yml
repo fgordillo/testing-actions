@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write # Required for gh pr create/list
+      pull-requests: write # Required for 'gh pr create/list' and posting AI comments on the PR timeline
       issues: write # Required for posting AI comments
 
     steps:
@@ -37,7 +37,9 @@ jobs:
       env:
         GITHUB_REPOSITORY: ${{ github.repository }}
       run: |
+        # Set execute permission for the shell script
         chmod +x .github/scripts/propagator.sh
+        # Execute the propagation script
         ./.github/scripts/propagator.sh
 
     - name: 📝 Create PR and Trigger AI Review
@@ -52,13 +54,13 @@ jobs:
             github,
             context,
             core,
-            exec,
+            exec, // Pass the execution tool to the script (required for gh CLI calls)
             target: '${{ steps.propagation_script.outputs.target }}',
             source: '${{ github.ref_name }}',
             newBranch: '${{ steps.propagation_script.outputs.branch }}',
             isConflict: '${{ steps.propagation_script.outputs.conflict }}' === 'true',
           });
       env:
-        # Pass all necessary variables from the shell script and secrets to Node.js
+        # Pass all necessary security variables to the Node.js environment
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
