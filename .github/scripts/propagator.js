@@ -69,7 +69,6 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 "--head", newBranch,
                 "--title", `Propagate: ${source} → ${target}`,
                 "--body", `Auto PR: **${source}** to **${target}**.\n\n${isConflict ? '⚠️ **MERGE CONFLICTS DETECTED** ⚠️' : '✅ **MERGE SUCCESSFUL** ✅'}`,
-                "--label", "propagator"
             ]
 
             let createOutput = ""
@@ -89,6 +88,14 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 if (match) {
                     prNumber = match[1]
                     core.info(`PR successfully created: #${prNumber}`)
+
+                    core.info("Adding 'propagator' label via API...")
+                    await github.rest.issues.addLabels({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: parseInt(prNumber),
+                        labels: ['propagator'],
+                    })
                 } else {
                     core.warning("PR created but could not parse number from output.")
                     core.debug(createOutput)
