@@ -29,6 +29,8 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         // --- A. Check for existing PR ---
         let existingPrOutput = ""
         let existingPrError = ""
+        
+        // Define arguments for 'gh pr list'
         const listArgs = [
             "pr", "list",
             "--base", target,
@@ -38,7 +40,6 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         ]
 
         try {
-            // Use exec.exec to run the command and capture output
             await exec.exec("gh", listArgs, {
                 silent: true,
                 listeners: {
@@ -63,19 +64,22 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             core.info(`Existing PR found: #${prNumber}`)
         } else {
             // --- B. Create new PR ---
+            // Define arguments for 'gh pr create'
+            const body = isConflict ?
+                `Auto PR: **${source}** to **${target}**.\n\n⚠️ **MERGE CONFLICTS DETECTED** ⚠️` :
+                `Auto PR: **${source}** to **${target}**.\n\n✅ **MERGE SUCCESSFUL** ✅`
             const createArgs = [
                 "pr", "create",
                 "--base", target,
                 "--head", newBranch,
                 "--title", `Propagate: ${source} → ${target}`,
-                "--body", `Auto PR: **${source}** to **${target}**.\n\n${isConflict ? '⚠️ **MERGE CONFLICTS DETECTED** ⚠️' : '✅ **MERGE SUCCESSFUL** ✅'}`,
+                "--body", body,
             ]
 
             let createOutput = ""
             let createError = ""
             
             try {
-                // Use exec.exec to run the command and capture output
                 await exec.exec("gh", createArgs, {
                     listeners: { 
                         stdout: (data) => { createOutput += data.toString() },
@@ -88,9 +92,9 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 if (match) {
                     prNumber = match[1]
                     core.info(`PR successfully created: #${prNumber}`)
-
+                    // Add 'propagator' label to the new PR
+                    core.info("Adding 'propagator' label via API...")
                     try {
-                        core.info("Adding 'propagator' label via API...")
                         await github.rest.issues.addLabels({
                             owner: context.repo.owner,
                             repo: context.repo.repo,
@@ -106,8 +110,6 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 }
 
             } catch (error) {
-                // This catch handles 'gh pr create' failing (e.g., due to an unknown label, or if propagator.sh failed to
-                // detect a 'no-op' merge, although the shell script now handles that).
                 core.error(`Failed to create PR. CLI Error Output: ${createError.trim()}`)
                 core.setFailed(`gh pr create failed: ${error.message}`)
                 return
@@ -115,21 +117,49 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         }
     })
 
-    // 3. Trigger AI review on conflict
+// ----------------------------------------------------
+// 🛠️ FIX: Fetch Conflict Diff and Inject into Prompt
+// ----------------------------------------------------
     if (isConflict && prNumber && OPENAI_API_KEY) {
         core.startGroup("🤖 Triggering AI Conflict Review")
 
+        // 1. Fetch the unified diff of the Pull Request (which includes conflict markers)
+        let conflictDiff = ""
+        try {
+            const { data: pullRequest } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: parseInt(prNumber),
+                mediaType: {
+                    format: 'diff' // Request the unified diff format
+                }
+            })
+            // The response for mediaType: diff is the diff content as a string
+            conflictDiff = pullRequest
+            core.info(`Successfully fetched diff content for PR #${prNumber}.`)
+            // core.debug(`Diff content:\n${conflictDiff}`)
+
+        } catch (error) {
+            core.warning(`Failed to fetch PR diff for AI analysis: ${error.message}`)
+            // Fallback: continue with the generic prompt, but warn
+            conflictDiff = "[Error: Unable to fetch conflict diff. Manual review required.]"
+        }
+        
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
 
         const promptContext = `
             # Merge Conflict Review Instructions
             You are an expert Git Conflict Resolution Agent. Your goal is to analyze the merge conflict present in the following Pull Request: #${prNumber}.
             The PR attempts to merge the source branch **${source}** into the target branch **${target}**.
+            
+            Analyze the provided Git conflict markers below. **DO NOT invent file names or line numbers.** Base your analysis strictly on the content provided in the conflict diff.
 
-            Use the GitHub API (if needed) and the context of the diff to explain the conflict to the developer.
+            --- CONFLICT DIFF START ---
+            ${conflictDiff}
+            --- CONFLICT DIFF END ---
 
             Your analysis must include:
-            1. An explanation of *why* the conflict occurred (which files/lines are involved).
+            1. An explanation of *why* the conflict occurred, mentioning the files and the content lines involved.
             2. A recommendation on *how* to resolve the conflict (which change should be kept, or if a hybrid solution is needed).
             3. A warning that manual intervention is required.
 
@@ -148,7 +178,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
 
             // Post the result as a comment on the Pull Request
             await github.rest.issues.createComment({
-                issue_number: prNumber,
+                issue_number: parseInt(prNumber),
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: `## ⚠️ AI Conflict Analysis (GPT-4) ⚠️\n\n${llmReview}`
