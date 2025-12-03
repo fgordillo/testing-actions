@@ -12,8 +12,9 @@ merge-propagation-agent:
     - Do not make changes without reviewing the context first.
     - If the conflict is trivial (e.g., non-overlapping changes), propose a safe resolution directly.
   permissions:
-    contents: read
     pull_requests: write
+    contents: write
+    issues: write
 
 translation-review-agent:
   name: "Translation Review Agent"
@@ -30,4 +31,5 @@ translation-review-agent:
     - Do not modify files directly; developers will apply changes.
   permissions:
     pull_requests: write
-    contents: read
+    contents: write
+    issues: write
