@@ -3,7 +3,7 @@ const { OpenAI } = require("openai")
 module.exports = async ({ github, context, core, exec, target, source, newBranch, isConflict }) => {
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-    const GH_TOKEN = process.env.GITHUB_TOKEN
+    const GH_TOKEN = process.env.GITHUB_TOKEN // Used for gh CLI authentication
 
     // Check prerequisites
     if (!OPENAI_API_KEY) {
@@ -19,8 +19,6 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
     await core.group("GitHub CLI setup", async () => {
         // Set up the token for gh CLI
         core.exportVariable("GH_TOKEN", GH_TOKEN)
-        // Install gh dependencies if necessary (usually unnecessary on ubuntu-latest)
-        // We rely on the GH_TOKEN env var for authentication.
     })
 
     let prNumber = null
@@ -28,8 +26,9 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
     // 2. Attempt to find existing PR or create a new one
     await core.group("Create Pull Request", async () => {
 
-        // Check for existing PR
+        // --- A. Check for existing PR ---
         let existingPrOutput = ""
+        let existingPrError = ""
         const listCmd = [
             "gh", "pr", "list",
             "--base", target,
@@ -38,18 +37,32 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             "--json", "number"
         ]
 
-        await exec.exec(listCmd.join(" "), [], {
-            silent: true,
-            listeners: { stdout: (data) => { existingPrOutput += data.toString() } }
-        })
+        try {
+            // Use exec.exec to run the command and capture output
+            await exec.exec(listCmd.join(" "), [], {
+                silent: true,
+                listeners: {
+                    stdout: (data) => { existingPrOutput += data.toString() },
+                    stderr: (data) => { existingPrError += data.toString() }
+                }
+            })
+        } catch (error) {
+            core.warning(`Error checking existing PRs: ${existingPrError.trim()}`)
+            // Don't throw here, proceed to attempt PR creation
+        }
 
-        const existingPrs = JSON.parse(existingPrOutput)
+        let existingPrs = []
+        try {
+            existingPrs = JSON.parse(existingPrOutput || "[]")
+        } catch (e) {
+            core.debug("No valid JSON returned from PR list")
+        }
 
         if (existingPrs.length > 0) {
             prNumber = existingPrs[0].number
             core.info(`Existing PR found: #${prNumber}`)
         } else {
-            // Create new PR
+            // --- B. Create new PR ---
             const createCmd = [
                 "gh", "pr", "create",
                 "--base", target,
@@ -60,24 +73,39 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             ]
 
             let createOutput = ""
-            await exec.exec(createCmd.join(" "), [], {
-                listeners: { stdout: (data) => { createOutput += data.toString() } }
-            })
+            let createError = ""
+            
+            try {
+                // Use exec.exec to run the command and capture output
+                await exec.exec(createCmd.join(" "), [], {
+                    listeners: { 
+                        stdout: (data) => { createOutput += data.toString() },
+                        stderr: (data) => { createError += data.toString() }
+                    }
+                })
 
-            // Extract PR number from output URL
-            const match = createOutput.match(/\/pull\/(\d+)/)
-            if (match) {
-                prNumber = match[1]
-                core.info(`PR successfully created: #${prNumber}`)
-            } else {
-                core.setFailed("Failed to create PR and could not extract number.")
+                // Extract PR number from output URL
+                const match = createOutput.match(/\/pull\/(\d+)/)
+                if (match) {
+                    prNumber = match[1]
+                    core.info(`PR successfully created: #${prNumber}`)
+                } else {
+                    core.warning("PR created but could not parse number from output.")
+                    core.debug(createOutput)
+                }
+
+            } catch (error) {
+                // This catch handles 'gh pr create' failing (e.g., due to an unknown label, or if propagator.sh failed to
+                // detect a 'no-op' merge, although the shell script now handles that).
+                core.error(`Failed to create PR. CLI Error Output: ${createError.trim()}`)
+                core.setFailed(`gh pr create failed: ${error.message}`)
                 return
             }
         }
     })
 
     // 3. Trigger AI review on conflict
-    if (isConflict === "true" && prNumber && OPENAI_API_KEY) {
+    if (isConflict && prNumber && OPENAI_API_KEY) {
         core.startGroup("🤖 Triggering AI Conflict Review")
 
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
@@ -120,7 +148,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             core.warning(`OpenAI API call failed during conflict review: ${error.message}`)
         }
         core.endGroup()
-    } else if (isConflict === "true" && !OPENAI_API_KEY) {
+    } else if (isConflict && !OPENAI_API_KEY) {
         core.warning("Merge conflict detected, but OPENAI_API_KEY is missing. Skipping AI review.")
     }
 }
