@@ -89,13 +89,17 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                     prNumber = match[1]
                     core.info(`PR successfully created: #${prNumber}`)
 
-                    core.info("Adding 'propagator' label via API...")
-                    await github.rest.issues.addLabels({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        issue_number: parseInt(prNumber),
-                        labels: ['propagator'],
-                    })
+                    try {
+                        core.info("Adding 'propagator' label via API...")
+                        await github.rest.issues.addLabels({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            issue_number: parseInt(prNumber),
+                            labels: ['propagator'],
+                        })
+                    } catch (labelError) {
+                        core.warning(`Failed to add label to PR #${prNumber}: ${labelError.message}`)
+                    }
                 } else {
                     core.warning("PR created but could not parse number from output.")
                     core.debug(createOutput)
