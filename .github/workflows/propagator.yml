@@ -11,8 +11,8 @@ jobs:
   propagate:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
       pull-requests: write # Required for 'gh pr create/list' and posting AI comments on the PR timeline
+      contents: write
       issues: write # Required for posting AI comments
 
     steps:
