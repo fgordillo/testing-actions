@@ -92,8 +92,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
                 if (match) {
                     prNumber = match[1]
                     core.info(`PR successfully created: #${prNumber}`)
-
-                    // Add label using the API object
+                    // Add 'propagator' label to the new PR
                     core.info("Adding 'propagator' label via API...")
                     try {
                         await github.rest.issues.addLabels({
@@ -143,6 +142,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         } catch (error) {
             core.warning(`Failed to fetch PR diff for AI analysis: ${error.message}`)
             // Fallback: continue with the generic prompt, but warn
+            conflictDiff = "[Error: Unable to fetch conflict diff. Manual review required.]"
         }
         
         const openai = new OpenAI({ apiKey: OPENAI_API_KEY })
