@@ -69,8 +69,8 @@ else
     # We use '|| true' because this command will intentionally fail (exit code 1), but we want the script to continue.
     git merge "origin/${SOURCE}" --no-commit || true 
 
-    # 🛠️ FIX: Stage the conflicted files so Git knows to commit them with the markers.
-    git add .
+    # 🛠️ FIX: Stage only the conflicted files so Git knows to commit them with the markers.
+    git add $(git diff --name-only --diff-filter=U)
 
     # Commit the conflicted state
     git commit -m "Auto-propagation merge (CONFLICT) ${SOURCE} into ${TARGET}"
