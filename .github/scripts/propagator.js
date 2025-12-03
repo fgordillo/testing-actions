@@ -1,6 +1,6 @@
 const { OpenAI } = require("openai")
 
-module.exports = async ({ github, context, core, target, source, newBranch, isConflict }) => {
+module.exports = async ({ github, context, core, exec, target, source, newBranch, isConflict }) => {
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY
     const GH_TOKEN = process.env.GITHUB_TOKEN
@@ -27,9 +27,6 @@ module.exports = async ({ github, context, core, target, source, newBranch, isCo
 
     // 2. Attempt to find existing PR or create a new one
     await core.group("Create Pull Request", async () => {
-
-        // Use gh CLI via github-script exec to create the PR
-        const { exec } = require("@actions/exec")
 
         // Check for existing PR
         let existingPrOutput = ""
