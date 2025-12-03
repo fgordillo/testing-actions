@@ -63,9 +63,14 @@ else
     echo "Merge failed (Conflict detected)"
     echo "conflict=true" >> $GITHUB_OUTPUT
 
-    # Revert to target state, then attempt merge again to get the conflict markers for the diff
+    # Revert to target state to clear any previous merge attempt artifacts
     git reset --hard "origin/${TARGET}"
-    git merge "origin/${SOURCE}" --no-commit || true # Perform merge without committing
+    # Attempt merge again to get the conflict markers in the working directory.
+    # We use '|| true' because this command will intentionally fail (exit code 1), but we want the script to continue.
+    git merge "origin/${SOURCE}" --no-commit || true 
+
+    # 🛠️ FIX: Stage only the conflicted files so Git knows to commit them with the markers.
+    git add $(git diff --name-only --diff-filter=U)
 
     # Commit the conflicted state
     git commit -m "Auto-propagation merge (CONFLICT) ${SOURCE} into ${TARGET}"
