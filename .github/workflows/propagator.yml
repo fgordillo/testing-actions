@@ -52,6 +52,7 @@ jobs:
             github,
             context,
             core,
+            exec,
             target: '${{ steps.propagation_script.outputs.target }}',
             source: '${{ github.ref_name }}',
             newBranch: '${{ steps.propagation_script.outputs.branch }}',
