@@ -1,1 +1,1 @@
-console.log('This is an example JavaScript file.');
+console.log('This is an example JavaScript file. Hello from the frontend!');
