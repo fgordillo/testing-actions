@@ -29,8 +29,8 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
         // --- A. Check for existing PR ---
         let existingPrOutput = ""
         let existingPrError = ""
-        const listCmd = [
-            "gh", "pr", "list",
+        const listArgs = [
+            "pr", "list",
             "--base", target,
             "--head", newBranch,
             "--repo", context.repo.owner + "/" + context.repo.repo,
@@ -39,7 +39,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
 
         try {
             // Use exec.exec to run the command and capture output
-            await exec.exec(listCmd.join(" "), [], {
+            await exec.exec("gh", listArgs, {
                 silent: true,
                 listeners: {
                     stdout: (data) => { existingPrOutput += data.toString() },
@@ -63,8 +63,8 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             core.info(`Existing PR found: #${prNumber}`)
         } else {
             // --- B. Create new PR ---
-            const createCmd = [
-                "gh", "pr", "create",
+            const createArgs = [
+                "pr", "create",
                 "--base", target,
                 "--head", newBranch,
                 "--title", `Propagate: ${source} → ${target}`,
@@ -77,7 +77,7 @@ module.exports = async ({ github, context, core, exec, target, source, newBranch
             
             try {
                 // Use exec.exec to run the command and capture output
-                await exec.exec(createCmd.join(" "), [], {
+                await exec.exec("gh", createArgs, {
                     listeners: { 
                         stdout: (data) => { createOutput += data.toString() },
                         stderr: (data) => { createError += data.toString() }
